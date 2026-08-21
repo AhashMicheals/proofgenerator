@@ -21,7 +21,7 @@ from modules.word_generator import generate_word_document
 
 # Page Configuration
 st.set_page_config(
-    page_title="Dynamic Excel ID Proof Generator",
+    page_title="iVEEem ID Proof Generator",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -66,8 +66,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def main():
-    st.markdown('<div class="main-header">Universal Excel ID Proof Generator</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 4-per-page Word proof documents automatically</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">iVEEem ID Proof Generator</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 6-per-page Word proof documents automatically</div>', unsafe_allow_html=True)
 
     # Sidebar Data Sources
     st.sidebar.header("📁 Data Inputs")
