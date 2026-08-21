@@ -40,11 +40,11 @@ def prevent_row_split(row):
 def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     """
     Generates a single Word document (Staff_ID_Proof.docx) containing all staff proof cards,
-    formatted as exactly 4 cards per A4 page in a 2x2 grid, with ZERO blank pages.
+    formatted as a 3‑row × 2‑column grid (6 cards per A4 page), with zero blank pages.
     """
     doc = docx.Document()
     
-    # Configure A4 Portrait setup (8.27 in x 11.69 in) with 0.35 in top/bottom margins
+    # Configure A4 Portrait setup (8.27 in x 11.69 in) with compact margins
     section = doc.sections[0]
     section.page_width = Inches(8.27)
     section.page_height = Inches(11.69)
@@ -53,53 +53,49 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     section.left_margin = Inches(0.40)
     section.right_margin = Inches(0.40)
     
-    CARD_WIDTH = Inches(3.68)
-    CARD_HEIGHT = Inches(5.18)
+    # Compute card dimensions for a 3‑row × 2‑column grid (6 cards per A4 page)
+    usable_width = Inches(8.27) - Inches(0.40) * 2  # 7.47 inches
+    CARD_WIDTH = usable_width / 2
+    CARD_HEIGHT = Inches(3.30)
     
     # Remove default initial blank paragraph created by docx.Document()
     if doc.paragraphs:
         p0 = doc.paragraphs[0]._element
         p0.getparent().remove(p0)
     
-    # Split staff records into chunks of 4 per page
-    chunk_size = 4
-    record_chunks = [staff_records[i:i + chunk_size] for i in range(0, len(staff_records), chunk_size)]
+    total_records = len(staff_records)
+    if total_records == 0:
+        output_stream = io.BytesIO()
+        doc.save(output_stream)
+        return output_stream.getvalue()
+        
+    # Total cards rounded up to multiple of 6 (3 rows * 2 cols = 6 cards/page)
+    total_cards = ((total_records + 5) // 6) * 6
+    total_rows = total_cards // 2
     
-    for chunk_idx, chunk in enumerate(record_chunks):
-        if chunk_idx > 0:
-            # Create a zero-height paragraph for the page break so it fits on current page without pushing a blank page
-            p_br = doc.add_paragraph()
-            p_br.paragraph_format.space_before = Pt(0)
-            p_br.paragraph_format.space_after = Pt(0)
-            p_br.paragraph_format.line_spacing = Pt(0)
-            run_br = p_br.add_run()
-            run_br.font.size = Pt(1)
-            run_br.add_break(docx.enum.text.WD_BREAK.PAGE)
-            
-        table = doc.add_table(rows=2, cols=2)
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        table.autofit = False
+    table = doc.add_table(rows=total_rows, cols=2)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.autofit = False
+    
+    for r_idx in range(total_rows):
+        row = table.rows[r_idx]
+        prevent_row_split(row)
+        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        row.height = CARD_HEIGHT
         
-        positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
-        
-        for row in table.rows:
-            prevent_row_split(row)
-            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-            row.height = CARD_HEIGHT
-            
-        for i, pos in enumerate(positions):
-            r, c = pos
-            cell = table.cell(r, c)
+        for c_idx in range(2):
+            card_idx = r_idx * 2 + c_idx
+            cell = row.cells[c_idx]
             cell.width = CARD_WIDTH
             cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             
-            if i < len(chunk):
-                record = chunk[i]
+            if card_idx < total_records:
+                record = staff_records[card_idx]
                 build_staff_card(cell, record)
                 set_cell_borders(cell, color="1F497D", sz="12", val="single")
                 set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
             else:
-                # Blank cell placeholder on last page if fewer than 4 records
+                # Blank placeholder cell for remaining slots on last page
                 set_cell_borders(cell, color="FFFFFF", sz="0", val="none")
                 
     output_stream = io.BytesIO()

@@ -224,15 +224,16 @@ def main():
     gen_btn = st.button("Generate Word Proof Document", key="gen_btn")
     
     if gen_btn or st.session_state.get("docx_generated"):
-        with st.spinner("Generating 4-per-page Word Proof Document..."):
+        # Generate a Word document with 6 proof cards per A4 page in a 3×2 grid
+        with st.spinner("Generating 3×2 grid (6 cards per A4 page) Word Proof Document..."):
             docx_bytes = generate_word_document(processed_records)
             st.session_state["docx_bytes"] = docx_bytes
             st.session_state["docx_generated"] = True
-            
-        pages_count = (len(processed_records) + 3) // 4
-        st.success(f"✓ Word document generated successfully!")
-        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (4 proof cards per A4 page)")
-        
+
+        pages_count = (len(processed_records) + 5) // 6
+        st.success("✓ Word document generated successfully!")
+        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (6 proof cards per A4 page)")
+
         st.download_button(
             label="Download Staff_ID_Proof.docx",
             data=st.session_state["docx_bytes"],
