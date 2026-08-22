@@ -20,7 +20,7 @@ def verify_docx(docx_path):
         print(f"\n--- Table #{idx+1} ({rows} rows, {cols} cols) ---")
         
         for r in range(rows):
-            page_num = (r // 3) + 1
+            page_num = (r // 5) + 1
             for c in range(cols):
                 cell = table.cell(r, c)
                 text = cell.text
@@ -36,7 +36,7 @@ def verify_docx(docx_path):
     print("\n================ SUMMARY ================")
     print(f"Total Staff Cards Verified in Document: {total_cards_found}")
     assert total_cards_found == 21, f"Expected 21 staff cards, found {total_cards_found}"
-    print("VERIFICATION SUCCESSFUL: Continuous 6-per-page A4 grid structure verified with zero blank pages!")
+    print("VERIFICATION SUCCESSFUL: Continuous 10-per-page (2x5) A4 grid structure verified with zero blank pages!")
 
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))

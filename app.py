@@ -67,7 +67,7 @@ st.markdown("""
 
 def main():
     st.markdown('<div class="main-header">iVEEem ID Proof Generator</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 6-per-page Word proof documents automatically</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 2×5 grid (10-per-page) Word proof documents automatically</div>', unsafe_allow_html=True)
 
     # Sidebar Data Sources
     st.sidebar.header("📁 Data Inputs")
@@ -224,15 +224,15 @@ def main():
     gen_btn = st.button("Generate Word Proof Document", key="gen_btn")
     
     if gen_btn or st.session_state.get("docx_generated"):
-        # Generate a Word document with 6 proof cards per A4 page in a 3×2 grid
-        with st.spinner("Generating 3×2 grid (6 cards per A4 page) Word Proof Document..."):
+        # Generate a Word document with 10 proof cards per A4 page in a 2×5 grid
+        with st.spinner("Generating 2×5 grid (10 cards per A4 page) Word Proof Document..."):
             docx_bytes = generate_word_document(processed_records)
             st.session_state["docx_bytes"] = docx_bytes
             st.session_state["docx_generated"] = True
 
-        pages_count = (len(processed_records) + 5) // 6
+        pages_count = (len(processed_records) + 9) // 10
         st.success("✓ Word document generated successfully!")
-        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (6 proof cards per A4 page)")
+        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (10 proof cards per A4 page in 2×5 grid)")
 
         st.download_button(
             label="Download Staff_ID_Proof.docx",

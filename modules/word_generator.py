@@ -40,7 +40,7 @@ def prevent_row_split(row):
 def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     """
     Generates a single Word document (Staff_ID_Proof.docx) containing all staff proof cards,
-    formatted as a 3‑row × 2‑column grid (6 cards per A4 page), with zero blank pages.
+    formatted as a 2×5 grid (10 cards per A4 page: 5 rows × 2 columns), with zero blank pages.
     """
     doc = docx.Document()
     
@@ -53,10 +53,10 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     section.left_margin = Inches(0.40)
     section.right_margin = Inches(0.40)
     
-    # Compute card dimensions for a 3‑row × 2‑column grid (6 cards per A4 page)
+    # Compute card dimensions for a 5‑row × 2‑column grid (10 cards per A4 page)
     usable_width = Inches(8.27) - Inches(0.40) * 2  # 7.47 inches
     CARD_WIDTH = usable_width / 2
-    CARD_HEIGHT = Inches(3.30)
+    CARD_HEIGHT = Inches(2.05)  # 5 rows @ 2.05 in = 10.25 in (fits comfortably in 10.99 in printable height)
     
     # Remove default initial blank paragraph created by docx.Document()
     if doc.paragraphs:
@@ -69,8 +69,8 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
         doc.save(output_stream)
         return output_stream.getvalue()
         
-    # Total cards rounded up to multiple of 6 (3 rows * 2 cols = 6 cards/page)
-    total_cards = ((total_records + 5) // 6) * 6
+    # Total cards rounded up to multiple of 10 (5 rows * 2 cols = 10 cards/page)
+    total_cards = ((total_records + 9) // 10) * 10
     total_rows = total_cards // 2
     
     table = doc.add_table(rows=total_rows, cols=2)
@@ -93,7 +93,7 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
                 record = staff_records[card_idx]
                 build_staff_card(cell, record)
                 set_cell_borders(cell, color="1F497D", sz="12", val="single")
-                set_cell_margins(cell, top=80, bottom=80, left=100, right=100)
+                set_cell_margins(cell, top=40, bottom=40, left=60, right=60)
             else:
                 # Blank placeholder cell for remaining slots on last page
                 set_cell_borders(cell, color="FFFFFF", sz="0", val="none")
@@ -104,28 +104,27 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
 
 
 def build_staff_card(cell, record: Dict[str, Any]):
-    """Populates a cell with the Staff ID Proof Card layout using dynamic record fields."""
+    """Populates a cell with the Staff ID Proof Card layout using dynamic record fields for 2x5 grid."""
     
     # 1. Header Bar
     p_header = cell.paragraphs[0]
     p_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_header.paragraph_format.space_before = Pt(2)
-    p_header.paragraph_format.space_after = Pt(4)
+    p_header.paragraph_format.space_before = Pt(1)
+    p_header.paragraph_format.space_after = Pt(2)
     
     run_header = p_header.add_run("ID PROOF")
-
     run_header.font.name = "Arial"
-    run_header.font.size = Pt(11)
+    run_header.font.size = Pt(9.5)
     run_header.font.bold = True
     run_header.font.color.rgb = RGBColor(31, 73, 125) # Navy Blue Accent
     
     # Divider rule
     p_rule = cell.add_paragraph()
     p_rule.paragraph_format.space_before = Pt(0)
-    p_rule.paragraph_format.space_after = Pt(6)
+    p_rule.paragraph_format.space_after = Pt(3)
     p_rule.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r_rule = p_rule.add_run("─" * 34)
-    r_rule.font.size = Pt(8)
+    r_rule = p_rule.add_run("─" * 38)
+    r_rule.font.size = Pt(6)
     r_rule.font.color.rgb = RGBColor(190, 205, 225)
 
     # 2. Nested Table for Photo (Left) and Details (Right)
@@ -136,11 +135,11 @@ def build_staff_card(cell, record: Dict[str, Any]):
     col_photo = nested_table.cell(0, 0)
     col_details = nested_table.cell(0, 1)
     
-    col_photo.width = Inches(1.30)
-    col_details.width = Inches(2.20)
+    col_photo.width = Inches(1.10)
+    col_details.width = Inches(2.40)
     
-    set_cell_margins(col_photo, top=10, bottom=10, left=10, right=30)
-    set_cell_margins(col_details, top=10, bottom=10, left=30, right=10)
+    set_cell_margins(col_photo, top=0, bottom=0, left=5, right=15)
+    set_cell_margins(col_details, top=0, bottom=0, left=15, right=5)
     
     set_cell_borders(col_photo, color="FFFFFF", sz="0", val="none")
     set_cell_borders(col_details, color="FFFFFF", sz="0", val="none")
@@ -155,7 +154,7 @@ def build_staff_card(cell, record: Dict[str, Any]):
     if photo_bytes:
         photo_stream = io.BytesIO(photo_bytes)
         try:
-            p_photo.add_run().add_picture(photo_stream, width=Inches(1.22))
+            p_photo.add_run().add_picture(photo_stream, width=Inches(0.95))
         except Exception:
             p_photo.add_run("[Photo Error]")
 
@@ -184,27 +183,27 @@ def build_staff_card(cell, record: Dict[str, Any]):
 
     total_fields = len(display_fields)
     
-    # Responsive font & spacing adjustment based on total fields
-    if total_fields <= 7:
-        font_sz = 8.8
-        space_aft = 2.5
-    elif total_fields <= 10:
-        font_sz = 8.0
-        space_aft = 1.8
-    else:
-        font_sz = 7.2
+    # Responsive font & spacing adjustment based on total fields for compact 2x5 cards
+    if total_fields <= 6:
+        font_sz = 7.6
         space_aft = 1.2
+    elif total_fields <= 9:
+        font_sz = 6.8
+        space_aft = 0.6
+    else:
+        font_sz = 6.0
+        space_aft = 0.2
 
     p_first = col_details.paragraphs[0]
     p_first.paragraph_format.space_before = Pt(0)
     p_first.paragraph_format.space_after = Pt(space_aft)
-    p_first.paragraph_format.line_spacing = 1.05
+    p_first.paragraph_format.line_spacing = 1.02
     
     for idx, (label, value) in enumerate(display_fields):
         p_line = p_first if idx == 0 else col_details.add_paragraph()
         p_line.paragraph_format.space_before = Pt(0)
         p_line.paragraph_format.space_after = Pt(space_aft)
-        p_line.paragraph_format.line_spacing = 1.05
+        p_line.paragraph_format.line_spacing = 1.02
         
         is_title = (idx == 0) or ("NAME" in label.upper() or "TITLE" in label.upper())
         is_id = ("ID" in label.upper() or "CODE" in label.upper() or "REG" in label.upper())
