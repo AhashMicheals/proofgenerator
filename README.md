@@ -10,7 +10,7 @@ A Python Streamlit web application to convert staff/student Excel data and photo
 - **4-Tier Photo Matching**: Matches photo files (`.jpg`, `.jpeg`, `.png`, `.webp`) by PHOTO name, RF ID NO, Staff NAME, or normalized filename slug.
 - **Fallback Placeholder**: Renders a clear "PHOTO NOT FOUND" card for missing photos.
 - **Validation Report**: Summary metrics (Total Records, Photos Found, Photos Missing, Missing RF IDs, Missing DOB, Duplicate RF IDs) and student preview table.
-- **A4 2×5 Print Layout**: Uses `python-docx` to format exactly 10 cards per A4 page in a 5‑row × 2‑column grid with exact margins and non-splitting row rules.
+- **A4 2×6 Print Layout**: Uses `python-docx` to format exactly 12 cards per A4 page in a 6‑row × 2‑column grid with exact margins and non-splitting row rules.
 
 ## Project Structure
 

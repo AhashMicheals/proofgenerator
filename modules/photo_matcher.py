@@ -58,42 +58,23 @@ def build_photo_registry(photo_files: List[Any]) -> Dict[str, Any]:
     registry = {}
     
     for item in photo_files:
-        filename = ""
-        file_bytes = None
-        
-        # 1. Streamlit UploadedFile object or file-like object
-        if hasattr(item, "name") and hasattr(item, "read"):
-            filename = item.name
-            file_bytes = item.getvalue() if hasattr(item, "getvalue") else item.read()
-        # 2. File path string
-        elif isinstance(item, str) and os.path.exists(item):
-            if os.path.isdir(item):
-                for root, _, files in os.walk(item):
-                    for f in files:
-                        fpath = os.path.join(root, f)
-                        try:
-                            with open(fpath, "rb") as fp:
-                                _register_single_photo(registry, f, fp.read())
-                        except Exception:
-                            continue
-                continue
-            elif os.path.isfile(item):
-                filename = os.path.basename(item)
-                with open(item, "rb") as f:
-                    file_bytes = f.read()
-        # 3. Tuple (filename, bytes)
-        elif isinstance(item, tuple) and len(item) == 2:
-            filename, file_bytes = item
-
-        if not filename or not file_bytes:
+        # 1. Directory path string
+        if isinstance(item, str) and os.path.exists(item) and os.path.isdir(item):
+            for root, _, files in os.walk(item):
+                for f in files:
+                    fpath = os.path.join(root, f)
+                    try:
+                        with open(fpath, "rb") as fp:
+                            _register_single_photo(registry, f, fp.read())
+                    except Exception:
+                        continue
             continue
 
-        # Check if item is a ZIP Archive
-        if filename.lower().endswith(".zip"):
+        # 2. ZIP file on disk
+        if isinstance(item, str) and os.path.exists(item) and item.lower().endswith(".zip"):
             try:
-                with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+                with zipfile.ZipFile(item, "r") as zf:
                     for zname in zf.namelist():
-                        # Skip Mac OS hidden files & directories
                         if zname.startswith("__MACOSX") or zname.endswith("/") or os.path.basename(zname).startswith("."):
                             continue
                         zext = os.path.splitext(zname)[1].lower()
@@ -103,10 +84,69 @@ def build_photo_registry(photo_files: List[Any]) -> Dict[str, Any]:
                                 _register_single_photo(registry, os.path.basename(zname), zbytes)
                             except Exception:
                                 continue
+                continue
             except Exception:
                 continue
-        else:
-            _register_single_photo(registry, filename, file_bytes)
+
+        # 3. Streamlit UploadedFile or file-like object
+        if hasattr(item, "name") and (hasattr(item, "read") or hasattr(item, "getvalue")):
+            filename = item.name
+            if filename.lower().endswith(".zip"):
+                try:
+                    if hasattr(item, "seek"):
+                        item.seek(0)
+                    with zipfile.ZipFile(item) as zf:
+                        for zname in zf.namelist():
+                            if zname.startswith("__MACOSX") or zname.endswith("/") or os.path.basename(zname).startswith("."):
+                                continue
+                            zext = os.path.splitext(zname)[1].lower()
+                            if zext in SUPPORTED_EXTENSIONS:
+                                try:
+                                    zbytes = zf.read(zname)
+                                    _register_single_photo(registry, os.path.basename(zname), zbytes)
+                                except Exception:
+                                    continue
+                    continue
+                except Exception:
+                    pass
+
+            # Non-zip uploaded image
+            file_bytes = item.getvalue() if hasattr(item, "getvalue") else item.read()
+            if filename and file_bytes:
+                _register_single_photo(registry, filename, file_bytes)
+            continue
+
+        # 4. Single file on disk
+        if isinstance(item, str) and os.path.exists(item) and os.path.isfile(item):
+            filename = os.path.basename(item)
+            try:
+                with open(item, "rb") as f:
+                    file_bytes = f.read()
+                _register_single_photo(registry, filename, file_bytes)
+            except Exception:
+                continue
+            continue
+
+        # 5. Tuple (filename, bytes)
+        if isinstance(item, tuple) and len(item) == 2:
+            filename, file_bytes = item
+            if filename.lower().endswith(".zip") and file_bytes:
+                try:
+                    with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+                        for zname in zf.namelist():
+                            if zname.startswith("__MACOSX") or zname.endswith("/") or os.path.basename(zname).startswith("."):
+                                continue
+                            zext = os.path.splitext(zname)[1].lower()
+                            if zext in SUPPORTED_EXTENSIONS:
+                                try:
+                                    zbytes = zf.read(zname)
+                                    _register_single_photo(registry, os.path.basename(zname), zbytes)
+                                except Exception:
+                                    continue
+                except Exception:
+                    continue
+            elif filename and file_bytes:
+                _register_single_photo(registry, filename, file_bytes)
             
     return registry
 

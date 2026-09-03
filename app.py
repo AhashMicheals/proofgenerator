@@ -2,9 +2,9 @@ import sys
 import os
 import io
 
-# Set Streamlit 2GB max upload size programmatically
-os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "2000"
-os.environ["STREAMLIT_SERVER_MAX_MESSAGE_SIZE"] = "2000"
+# Set Streamlit 5GB max upload size programmatically (supports files > 3GB)
+os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "5120"
+os.environ["STREAMLIT_SERVER_MAX_MESSAGE_SIZE"] = "5120"
 
 # Ensure local workspace root is prioritized in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -67,7 +67,7 @@ st.markdown("""
 
 def main():
     st.markdown('<div class="main-header">iVEEem ID Proof Generator</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 2×5 grid (10-per-page) Word proof documents automatically</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Upload ANY Excel file — process & generate 2×6 grid (12-per-page) Word proof documents automatically</div>', unsafe_allow_html=True)
 
     # Sidebar Data Sources
     st.sidebar.header("📁 Data Inputs")
@@ -75,14 +75,14 @@ def main():
     excel_file = st.sidebar.file_uploader(
         "Upload Any Excel File", 
         type=["xlsx", "xls"],
-        help="Upload .xlsx or .xls file containing any records"
+        help="Upload .xlsx or .xls file containing any records (supports large files up to 5GB)"
     )
     
     photo_files = st.sidebar.file_uploader(
         "Upload Photos (Images or ZIP)", 
         type=["jpg", "jpeg", "png", "webp", "bmp", "zip"],
         accept_multiple_files=True,
-        help="Upload multiple images or ZIP archives (up to 2GB total)"
+        help="Upload multiple images or ZIP archives (supports large files up to 5GB)"
     )
     
     server_photo_folder = st.sidebar.text_input(
@@ -224,15 +224,15 @@ def main():
     gen_btn = st.button("Generate Word Proof Document", key="gen_btn")
     
     if gen_btn or st.session_state.get("docx_generated"):
-        # Generate a Word document with 10 proof cards per A4 page in a 2×5 grid
-        with st.spinner("Generating 2×5 grid (10 cards per A4 page) Word Proof Document..."):
+        # Generate a Word document with 12 proof cards per A4 page in a 2×6 grid
+        with st.spinner("Generating 2×6 grid (12 cards per A4 page) Word Proof Document..."):
             docx_bytes = generate_word_document(processed_records)
             st.session_state["docx_bytes"] = docx_bytes
             st.session_state["docx_generated"] = True
 
-        pages_count = (len(processed_records) + 9) // 10
+        pages_count = (len(processed_records) + 11) // 12
         st.success("✓ Word document generated successfully!")
-        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (10 proof cards per A4 page in 2×5 grid)")
+        st.info(f"**Total Records:** {len(processed_records)} | **Pages Created:** {pages_count} (12 proof cards per A4 page in 2×6 grid)")
 
         st.download_button(
             label="Download Staff_ID_Proof.docx",

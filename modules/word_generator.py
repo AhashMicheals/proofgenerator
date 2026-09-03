@@ -37,10 +37,66 @@ def prevent_row_split(row):
     trPr = row._tr.get_or_add_trPr()
     trPr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
 
+def build_page_disclaimer_header(section, usable_width):
+    """
+    Builds the top bilingual disclaimer header box for each page:
+    Left: Tamil disclaimer
+    Right: English disclaimer
+    Repeats on each and every page automatically via Word section header.
+    """
+    header = section.header
+    # Remove default empty paragraph in header
+    if header.paragraphs:
+        p_head = header.paragraphs[0]._element
+        p_head.getparent().remove(p_head)
+        
+    tbl_hdr = header.add_table(rows=1, cols=2, width=usable_width)
+    tbl_hdr.alignment = WD_TABLE_ALIGNMENT.CENTER
+    tbl_hdr.autofit = False
+    
+    c_tam = tbl_hdr.cell(0, 0)
+    c_eng = tbl_hdr.cell(0, 1)
+    half_width = usable_width / 2
+    c_tam.width = half_width
+    c_eng.width = half_width
+    c_tam.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    c_eng.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    
+    set_cell_borders(c_tam, color="000000", sz="12", val="single")
+    set_cell_borders(c_eng, color="000000", sz="12", val="single")
+    set_cell_margins(c_tam, top=35, bottom=35, left=70, right=70)
+    set_cell_margins(c_eng, top=35, bottom=35, left=70, right=70)
+    
+    # Left: Tamil
+    p_tam = c_tam.paragraphs[0]
+    p_tam.paragraph_format.space_before = Pt(0)
+    p_tam.paragraph_format.space_after = Pt(0)
+    p_tam.paragraph_format.line_spacing = 1.05
+    r_tam = p_tam.add_run("சிகப்பு மை பேனாவினால் - இந்த PROOF PAPER-ல் மட்டும் திருத்தம் செய்யவும். கார்டு வந்த பிறகு திருத்தம் செய்தால் கண்டிப்பாக கார்டு மாற்றி தரமுடியாது.")
+    r_tam.font.bold = True
+    r_tam.font.size = Pt(7.5)
+    r_tam.font.name = "Nirmala UI"
+    rPr_tam = r_tam._r.get_or_add_rPr()
+    rFonts_tam = parse_xml(f'<w:rFonts {nsdecls("w")} w:ascii="Nirmala UI" w:hAnsi="Nirmala UI" w:cs="Nirmala UI"/>')
+    rPr_tam.append(rFonts_tam)
+    rPr_tam.append(parse_xml(f'<w:bCs {nsdecls("w")}/>'))
+    
+    # Right: English
+    p_eng = c_eng.paragraphs[0]
+    p_eng.paragraph_format.space_before = Pt(0)
+    p_eng.paragraph_format.space_after = Pt(0)
+    p_eng.paragraph_format.line_spacing = 1.05
+    r_eng = p_eng.add_run("MAKE CORRECTIONS ONLY ON THIS PROOF PAPER USING RED INK PEN. NO CORRECTIONS OR REPLACEMENTS WILL BE ENTERTAINED AFTER ID CARD IS PRINTED.")
+    r_eng.font.bold = True
+    r_eng.font.size = Pt(7.2)
+    r_eng.font.name = "Arial"
+
+
 def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     """
     Generates a single Word document (Staff_ID_Proof.docx) containing all staff proof cards,
-    formatted as a 2×5 grid (10 cards per A4 page: 5 rows × 2 columns), with zero blank pages.
+    formatted as a 2×6 grid (12 cards per A4 page: 6 rows × 2 columns), with a top bilingual
+    disclaimer (Tamil left, English right) on each and every page.
     """
     doc = docx.Document()
     
@@ -48,15 +104,19 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
     section = doc.sections[0]
     section.page_width = Inches(8.27)
     section.page_height = Inches(11.69)
-    section.top_margin = Inches(0.35)
-    section.bottom_margin = Inches(0.35)
+    section.top_margin = Inches(0.80)
+    section.bottom_margin = Inches(0.20)
     section.left_margin = Inches(0.40)
     section.right_margin = Inches(0.40)
+    section.header_distance = Inches(0.18)
     
-    # Compute card dimensions for a 5‑row × 2‑column grid (10 cards per A4 page)
+    # Compute card dimensions for a 6‑row × 2‑column grid (12 cards per A4 page)
     usable_width = Inches(8.27) - Inches(0.40) * 2  # 7.47 inches
     CARD_WIDTH = usable_width / 2
-    CARD_HEIGHT = Inches(2.05)  # 5 rows @ 2.05 in = 10.25 in (fits comfortably in 10.99 in printable height)
+    CARD_HEIGHT = Inches(1.70)  # 6 rows @ 1.70 in = 10.20 in (fits comfortably in 10.69 in printable height)
+    
+    # Build top bilingual disclaimer on every page
+    build_page_disclaimer_header(section, usable_width)
     
     # Remove default initial blank paragraph created by docx.Document()
     if doc.paragraphs:
@@ -69,8 +129,8 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
         doc.save(output_stream)
         return output_stream.getvalue()
         
-    # Total cards rounded up to multiple of 10 (5 rows * 2 cols = 10 cards/page)
-    total_cards = ((total_records + 9) // 10) * 10
+    # Total cards rounded up to multiple of 12 (6 rows * 2 cols = 12 cards/page)
+    total_cards = ((total_records + 11) // 12) * 12
     total_rows = total_cards // 2
     
     table = doc.add_table(rows=total_rows, cols=2)
@@ -93,7 +153,7 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
                 record = staff_records[card_idx]
                 build_staff_card(cell, record)
                 set_cell_borders(cell, color="1F497D", sz="12", val="single")
-                set_cell_margins(cell, top=40, bottom=40, left=60, right=60)
+                set_cell_margins(cell, top=20, bottom=20, left=50, right=50)
             else:
                 # Blank placeholder cell for remaining slots on last page
                 set_cell_borders(cell, color="FFFFFF", sz="0", val="none")
@@ -104,27 +164,27 @@ def generate_word_document(staff_records: List[Dict[str, Any]]) -> bytes:
 
 
 def build_staff_card(cell, record: Dict[str, Any]):
-    """Populates a cell with the Staff ID Proof Card layout using dynamic record fields for 2x5 grid."""
+    """Populates a cell with the Staff ID Proof Card layout using dynamic record fields for 2x6 grid."""
     
     # 1. Header Bar
     p_header = cell.paragraphs[0]
     p_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_header.paragraph_format.space_before = Pt(1)
-    p_header.paragraph_format.space_after = Pt(2)
+    p_header.paragraph_format.space_after = Pt(1)
     
     run_header = p_header.add_run("ID PROOF")
     run_header.font.name = "Arial"
-    run_header.font.size = Pt(9.5)
+    run_header.font.size = Pt(8.5)
     run_header.font.bold = True
     run_header.font.color.rgb = RGBColor(31, 73, 125) # Navy Blue Accent
     
     # Divider rule
     p_rule = cell.add_paragraph()
     p_rule.paragraph_format.space_before = Pt(0)
-    p_rule.paragraph_format.space_after = Pt(3)
+    p_rule.paragraph_format.space_after = Pt(2)
     p_rule.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_rule = p_rule.add_run("─" * 38)
-    r_rule.font.size = Pt(6)
+    r_rule.font.size = Pt(5)
     r_rule.font.color.rgb = RGBColor(190, 205, 225)
 
     # 2. Nested Table for Photo (Left) and Details (Right)
@@ -135,11 +195,11 @@ def build_staff_card(cell, record: Dict[str, Any]):
     col_photo = nested_table.cell(0, 0)
     col_details = nested_table.cell(0, 1)
     
-    col_photo.width = Inches(1.10)
-    col_details.width = Inches(2.40)
+    col_photo.width = Inches(1.05)
+    col_details.width = Inches(2.45)
     
-    set_cell_margins(col_photo, top=0, bottom=0, left=5, right=15)
-    set_cell_margins(col_details, top=0, bottom=0, left=15, right=5)
+    set_cell_margins(col_photo, top=0, bottom=0, left=5, right=10)
+    set_cell_margins(col_details, top=0, bottom=0, left=10, right=5)
     
     set_cell_borders(col_photo, color="FFFFFF", sz="0", val="none")
     set_cell_borders(col_details, color="FFFFFF", sz="0", val="none")
@@ -154,7 +214,7 @@ def build_staff_card(cell, record: Dict[str, Any]):
     if photo_bytes:
         photo_stream = io.BytesIO(photo_bytes)
         try:
-            p_photo.add_run().add_picture(photo_stream, width=Inches(0.95))
+            p_photo.add_run().add_picture(photo_stream, width=Inches(0.85))
         except Exception:
             p_photo.add_run("[Photo Error]")
 
@@ -183,16 +243,16 @@ def build_staff_card(cell, record: Dict[str, Any]):
 
     total_fields = len(display_fields)
     
-    # Responsive font & spacing adjustment based on total fields for compact 2x5 cards
+    # Responsive font & spacing adjustment based on total fields for compact 2x6 cards
     if total_fields <= 6:
-        font_sz = 7.6
-        space_aft = 1.2
+        font_sz = 7.0
+        space_aft = 0.8
     elif total_fields <= 9:
-        font_sz = 6.8
-        space_aft = 0.6
+        font_sz = 6.4
+        space_aft = 0.4
     else:
-        font_sz = 6.0
-        space_aft = 0.2
+        font_sz = 5.6
+        space_aft = 0.1
 
     p_first = col_details.paragraphs[0]
     p_first.paragraph_format.space_before = Pt(0)
@@ -229,4 +289,16 @@ def build_staff_card(cell, record: Dict[str, Any]):
         else:
             r_val.font.bold = False
             r_val.font.color.rgb = RGBColor(30, 30, 30)
+
+    # 5. "No of corrections _____" line at bottom right of each card
+    p_corr = cell.paragraphs[-1] if len(cell.paragraphs) > 2 else cell.add_paragraph()
+    p_corr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    p_corr.paragraph_format.space_before = Pt(1)
+    p_corr.paragraph_format.space_after = Pt(0)
+    p_corr.paragraph_format.line_spacing = 1.0
+    r_corr = p_corr.add_run("No of corrections _____")
+    r_corr.font.name = "Arial"
+    r_corr.font.size = Pt(6.8)
+    r_corr.font.bold = True
+    r_corr.font.color.rgb = RGBColor(60, 60, 60)
 
